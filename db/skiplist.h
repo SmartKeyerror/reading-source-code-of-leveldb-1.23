@@ -49,6 +49,7 @@ class SkipList {
   // must remain allocated for the lifetime of the skiplist object.
   explicit SkipList(Comparator cmp, Arena* arena);
 
+  // 不允许进行拷贝构造与拷贝赋值
   SkipList(const SkipList&) = delete;
   SkipList& operator=(const SkipList&) = delete;
 
@@ -56,7 +57,7 @@ class SkipList {
   // REQUIRES: nothing that compares equal to key is currently in the list.
   void Insert(const Key& key);
 
-  // Returns true iff an entry that compares equal to key is in the list.
+  // Returns true iff an entry that compares equal to key is in the list. (iff, if and only if)
   bool Contains(const Key& key) const;
 
   // Iteration over the contents of a skip list
