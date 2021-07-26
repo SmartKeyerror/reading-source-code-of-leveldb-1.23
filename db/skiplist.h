@@ -38,6 +38,9 @@ namespace leveldb {
 
 class Arena;
 
+/*
+ *
+ */
 template <typename Key, class Comparator>
 class SkipList {
  private:
@@ -129,13 +132,18 @@ class SkipList {
   Node* FindLast() const;
 
   // Immutable after construction
+  // 比较器
   Comparator const compare_;
+
+  // leveldb 自己封装的一个内存分配器
   Arena* const arena_;  // Arena used for allocations of nodes
 
+  // 虚拟头结点，也就是 Dummy Head
   Node* const head_;
 
   // Modified only by Insert().  Read racily by readers, but stale
   // values are ok.
+  // 原子变量的层高
   std::atomic<int> max_height_;  // Height of the entire list
 
   // Read/written only by Insert().
@@ -143,6 +151,33 @@ class SkipList {
 };
 
 // Implementation details follow
+/*
+ * Node 中使用了比较多的关于指令重排的内容。
+ *
+ * 需要注意的是，memory ordering 是针对于单线程而来的，也就是同一个线程内的指令重排情况，比如
+ * 现在有 2 条语句:
+ *
+ *  x = 100;
+ *  y.store();
+ *
+ * 其中 x 的写入是非原子性的，而 y 的写入是原子性的，不管我们使用何种 memory ordering，y 的原子
+ * 写入永远是满足的，也就是说，y.store() 必然是多个线程的一个同步点。但是，由于指令重排的原因，x = 100;
+ * 可能会在 y.store(); 之后执行，也可能会在其之前执行。memory ordering 限制的就是这个。
+ *
+ * 1. Relaxed ordering
+ *
+ * Relaxed ordering，也就是 std::memory_order_relaxed，不对重排进行任何限制，只保证相关内存操作的原子性。
+ * 原子操作之前或者是之后的指令怎么被重排，我们并不关心，反正保证对内存的操作是原子性的就行了。通常用于计数器等场景中
+ *
+ *
+ * 2. Release-Acquire ordering
+ *
+ * Release-Acquire ordering 由两个参数所指定，一个是 std::memory_order_acquire，用于 load() 方法，
+ * 一个则是 std::memory_order_release， 用于 store() 方法。
+ *
+ * std::memory_order_acquire 表示在 load() 之后的所有读写操作，不允许被重排到这个 load() 的前面。
+ * std::memory_order_release 表示在 store() 之前的所有读写操作，不允许被重排到这个 store() 的后面
+ */
 template <typename Key, class Comparator>
 struct SkipList<Key, Comparator>::Node {
   explicit Node(const Key& k) : key(k) {}
