@@ -39,7 +39,10 @@ namespace leveldb {
 class Arena;
 
 /*
+ * SkipList 属于 leveldb 中的核心数据结构，也是 memory write buffer 的具体实现
  *
+ * SkipList 的实现挺有意思的，leveldb 是一个 key-value DB，但是 SkipList 类中只定义了 Key，
+ * 而没有定义 value。这是为什么?
  */
 template <typename Key, class Comparator>
 class SkipList {
@@ -103,9 +106,11 @@ class SkipList {
   };
 
  private:
+  // 经验值
   enum { kMaxHeight = 12 };
 
   inline int GetMaxHeight() const {
+    // 简单的原子性取出层高，无所谓指令重排
     return max_height_.load(std::memory_order_relaxed);
   }
 
@@ -211,6 +216,10 @@ struct SkipList<Key, Comparator>::Node {
 
  private:
   // Array of length equal to the node height.  next_[0] is lowest level link.
+  // 1) 这里提前声明并申请了一个内存，用于存储第 0 层的数据，因为第 0 层必然存在数据。
+  // 2) 这里的数组长度其实就是层高，假设 next_ 长度为 n，那么就会从 next_[n-1] 开始查找。
+  // 3) 因为 skip list 的 level 并不会太大，使用数组存储 Node 指针的话对 CPU 内存更友好
+  // https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf
   std::atomic<Node*> next_[1];
 };
 
@@ -279,9 +288,13 @@ int SkipList<Key, Comparator>::RandomHeight() {
   // Increase height with probability 1 in kBranching
   static const unsigned int kBranching = 4;
   int height = 1;
+  // (rnd_.Next() % kBranching) == 0 这个条件限制了上层的节点数量为下层节点数量的 1/4
+  // 照此推算，如果根节点的节点数为 1，并且总计有 12 层的话，那么就有 1 + 4 + 16 + ... + 4^11 个节点
+  // 差不多 500 多万数据，理论上来说应该是不可能写满的，因为 Memory Write Buffer 有容量限制
   while (height < kMaxHeight && ((rnd_.Next() % kBranching) == 0)) {
     height++;
   }
+  // 下面这两个 assert 是为了什么?
   assert(height > 0);
   assert(height <= kMaxHeight);
   return height;
