@@ -25,12 +25,17 @@ namespace config {
 static const int kNumLevels = 7;
 
 // Level-0 compaction is started when we hit this many files.
+/* 当 Level-0 存在 4 个 SSTable 时将会触发 Level-0 向其它 level 的 Compaction */
 static const int kL0_CompactionTrigger = 4;
 
 // Soft limit on number of level-0 files.  We slow down writes at this point.
+/* 当 Level-0 的 SSTable 数量达到 8 时，将会减缓 leveldb 的写入速率，其实就是睡眠 1 秒。
+ * 具体的代码逻辑可参考 db_impl.cc/MakeRoomForWrite() 方法 */
 static const int kL0_SlowdownWritesTrigger = 8;
 
 // Maximum number of level-0 files.  We stop writes at this point.
+/* Level-0 最多只能有 12 个 SSTable，一旦达到该阈值，将会停止外部写入，等到 Level-0 向下
+ * Compaction 的完成 */
 static const int kL0_StopWritesTrigger = 12;
 
 // Maximum level to which a new compacted memtable is pushed if it
