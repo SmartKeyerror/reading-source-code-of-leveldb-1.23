@@ -84,6 +84,7 @@ struct LEVELDB_EXPORT Options {
   // so you may wish to adjust this parameter to control memory usage.
   // Also, a larger write buffer will result in a longer recovery time
   // the next time the database is opened.
+
   // Write Buffer Size，默认为 4K。这个值可能会直接影响 leveldb 的写入性能。
   // Write Buffer Size 越大，Client 的写入性能也就越高，但是也同时增加了 Immutable Memory flush to disk 的时间。
   // 因此，这个值的确定需要根据实际的需求，来进行压测，最终得到一个较好的 Write Size Buffer。

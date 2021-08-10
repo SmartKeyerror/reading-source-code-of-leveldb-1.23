@@ -226,8 +226,10 @@ struct SkipList<Key, Comparator>::Node {
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node* SkipList<Key, Comparator>::NewNode(
     const Key& key, int height) {
+  // 内存分配时只需要再分配 level - 1 层，因为第 0 层已经预先分配完毕了。
   char* const node_memory = arena_->AllocateAligned(
       sizeof(Node) + sizeof(std::atomic<Node*>) * (height - 1));
+  // 这里是 placement new 的写法，在现有的内存上进行 new object
   return new (node_memory) Node(key);
 }
 
@@ -306,18 +308,39 @@ bool SkipList<Key, Comparator>::KeyIsAfterNode(const Key& key, Node* n) const {
   return (n != nullptr) && (compare_(n->key, key) < 0);
 }
 
+/* 在 Skip List 中寻找第一个大于等于 key 的节点，同时使用 prev 数组记录下该节点的每一个 level
+ * 的前驱节点，用于辅助实现 insert 和 delete 操作，把 prev 数组当作是单向链表的 prev 节点就可以了
+ *
+ *    5->10->18->22->35->44
+ *           ↑   ↑
+ *         prev node
+ *
+ * 如上面的单链表，node 是我们要查找的节点，当我们返回给调用方之后，如果调用方需要做删除操作的话，
+ * 就可以这样来做:
+ *
+ *    prev->next = node->next;
+ *    node->next = nullptr;
+ *    delete node;
+ *
+ * 很好的一个设计，在查找的过程中记录一些其他接口所需的信息，最大可能地进行代码复用。*/
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node*
 SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
                                               Node** prev) const {
   Node* x = head_;
+  // index 是从 0 开始的，所以需要减去 1
   int level = GetMaxHeight() - 1;
   while (true) {
+    /* 获取当前 level 层的下一个节点 */
     Node* next = x->Next(level);
+
+    /* KeyIsAfterNode 实际上就是使用 Compactor 比较 Key 和 next->key 的大小关系。
+     * 如果当前待查找节点比 next->key 还要大的话，那么就继续在同一层向后查找 */
     if (KeyIsAfterNode(key, next)) {
       // Keep searching in this list
       x = next;
     } else {
+      // prev 数组主要记录的就是每一层的 prev 节点，主要用于插入和删除时使用
       if (prev != nullptr) prev[level] = x;
       if (level == 0) {
         return next;
@@ -329,6 +352,7 @@ SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
   }
 }
 
+/* 寻找最后一个小于等于 key 的节点 */
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node*
 SkipList<Key, Comparator>::FindLessThan(const Key& key) const {
@@ -350,6 +374,8 @@ SkipList<Key, Comparator>::FindLessThan(const Key& key) const {
   }
 }
 
+/* 获取 Skip List 中的最后一个节点。注意 FindLast() 实现不能从 level 0 直接使用 next 指针
+ * 一路往前寻找，因为这样的话其时间复杂度将为 O(n)。而从最高层往下找的话，其时间复杂度为 O(logn) */
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node* SkipList<Key, Comparator>::FindLast()
     const {
