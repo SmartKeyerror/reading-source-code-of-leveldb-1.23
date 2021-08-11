@@ -12,6 +12,10 @@
 
 namespace leveldb {
 
+/* 将 Sequence Number 和 Value Type 打包得到一个 8 字节的整型，其中低 8 位为 Value Type。
+ * 因此 Sequence Number 虽然是一个 uint64_t 的无符号整型，但是其最大值只能取到 1 << 56 - 1，因为在
+ * InternalKey 的实现中，我们需要将 Sequence Number 和 Value Type 打包。尽管如此，Sequence Number 的
+ * 最大值也是一个天文数字。*/
 static uint64_t PackSequenceAndType(uint64_t seq, ValueType t) {
   assert(seq <= kMaxSequenceNumber);
   assert(t <= kValueTypeForSeek);
@@ -124,11 +128,21 @@ LookupKey::LookupKey(const Slice& user_key, SequenceNumber s) {
     dst = new char[needed];
   }
   start_ = dst;
+
+  /* 将 usize + 8 转换成 Varint32 并写入至 dst 中 */
   dst = EncodeVarint32(dst, usize + 8);
+
+  /* 此时 dst 将指向 Varint32 的下一个地址 */
   kstart_ = dst;
+
+  /* 将 User Key 追加到 Varint32 的后面 */
   std::memcpy(dst, user_key.data(), usize);
   dst += usize;
+
+  /* kValueTypeForSeek 的默认值为 kTypeValue */
   EncodeFixed64(dst, PackSequenceAndType(s, kValueTypeForSeek));
+
+  /* 8 字节长度的 Sequence Number 和 Value Type 组合体 */
   dst += 8;
   end_ = dst;
 }

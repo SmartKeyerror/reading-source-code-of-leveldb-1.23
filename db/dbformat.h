@@ -51,11 +51,44 @@ static const int kReadBytesPeriod = 1048576;
 
 }  // namespace config
 
+/* leveldb 是一个 K-V 存储引擎，因此 Key 的设计就非常重要的了。
+ * 一方面需要保存用户自己的 User Key，另一方面还需要有一个序列号来标识同一个 Key 的多个版本更新。
+ *
+ * 在 InnoDB 中，为了支持 MVCC 所以 InnoDB 直接将 Transaction ID 写入了 B+Tree 聚簇索引记录中。
+ * leveldb 则使用一个全局递增的 Sequence Number 来标识 K-V 操作的先后顺序。比如对于同一个 Key 来说，
+ * leveldb 存储了 "username-1"、"username-2"，那么当我们进行 Compaction 时，"username-1" 将会被
+ * "username-2" 所覆盖。
+ *
+ * 最后，leveldb 中删除 Key 时实际上是追加一个带有删除标志位的 Key，因此，我们还需要将标志位也放到 K
+ * 的组中当中去。这样一来就得到了 InternalKey 的 3 个组成部分:
+ *
+ * - User Key: 用户传入的 Key
+ * - Sequence Number: leveldb 全局递增的序列号，表示操作顺序
+ * - Value Type: 枚举值，表示一个 Key 是否被删除。
+ *
+ * InternalKey 实际上就是把上面的 3 部分组合起来形成一个完整的 K，而 下面的 ParsedInternalKey
+ * 则是将 InternalKey 拆解开来，得到 User Key、Sequence Number 以及 Value Type。我们可以简单
+ * 地使用 Encode 和 Decode 的方式来理解 InternalKey 和 ParsedInternalKey 之间的关系:
+ *
+ * User Key + Sequence Number + Value Type  =>  InternalKey
+ *                                        Encode
+ *
+ * InternalKey  =>  User Key + Sequence Number + Value Type
+ *            Decode
+ *
+ * 下图为 InternalKey 的实际格式:
+ * ┌──────────┬──────────────────────────────────────┐
+ * │ User Key │ (Sequence Number << 8) | Value Type  │
+ * └──────────┴──────────────────────────────────────┘
+ * */
 class InternalKey;
 
 // Value types encoded as the last component of internal keys.
 // DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
 // data structures.
+
+/* 因为 leveldb 采用的是 Append 的方式删除数据，因此使用一个标志位来表示数据被删除，也就是
+ * kTypeDeletion，这个枚举值将会被添加到 User Key 中，组成 InternalKey 或 ParsedInternalKey */
 enum ValueType { kTypeDeletion = 0x0, kTypeValue = 0x1 };
 // kValueTypeForSeek defines the ValueType that should be passed when
 // constructing a ParsedInternalKey object for seeking to a particular
@@ -71,6 +104,8 @@ typedef uint64_t SequenceNumber;
 // can be packed together into 64-bits.
 static const SequenceNumber kMaxSequenceNumber = ((0x1ull << 56) - 1);
 
+
+/* ParsedInternalKey 实际上就是 Internal Key 拆解之后的产物 */
 struct ParsedInternalKey {
   Slice user_key;
   SequenceNumber sequence;
@@ -88,12 +123,14 @@ inline size_t InternalKeyEncodingLength(const ParsedInternalKey& key) {
 }
 
 // Append the serialization of "key" to *result.
+/* 将 ParsedInternalKey 中的三个组件打包成 InternalKey，并存放到 result 中 */
 void AppendInternalKey(std::string* result, const ParsedInternalKey& key);
 
 // Attempt to parse an internal key from "internal_key".  On success,
 // stores the parsed data in "*result", and returns true.
 //
 // On error, returns false, leaves "*result" in an undefined state.
+/* 将 InternalKey 拆解成三个组件并扔到 result 的相应字段中 */
 bool ParseInternalKey(const Slice& internal_key, ParsedInternalKey* result);
 
 // Returns the user key portion of an internal key.
@@ -188,6 +225,16 @@ inline bool ParseInternalKey(const Slice& internal_key,
 }
 
 // A helper class useful for DBImpl::Get()
+/* MemTable 的 Get() 方法需要传入 LookupKey 实例，从其构造函数中我们可以看出它就是由
+ * User Key、Sequence Number 以及内部的 ValueType 所组成的。
+ *
+ *  ┌───────────────┬─────────────────┬────────────────────────────┐
+ *  │ size(varint32)│ User Key(string)│Sequence Number | kValueType│
+ *  └───────────────┴─────────────────┴────────────────────────────┘
+ *  start_         kstart_                                        end_
+ *
+ *  因为 LookupKey 的 size 是变长存储的，因此需要使用 kstart_ 来标识 User Key 的起始地址
+ * */
 class LookupKey {
  public:
   // Initialize *this for looking up user_key at a snapshot with
@@ -200,12 +247,16 @@ class LookupKey {
   ~LookupKey();
 
   // Return a key suitable for lookup in a MemTable.
+  /* 可以看到，MemTable 获取的 end_ - start_，也就是说前面的变长 size 也会作为 MemTable Key
+   * 的一部分 */
   Slice memtable_key() const { return Slice(start_, end_ - start_); }
 
   // Return an internal key (suitable for passing to an internal iterator)
+  /* InternalKey 就是标准的三个组件 */
   Slice internal_key() const { return Slice(kstart_, end_ - kstart_); }
 
   // Return the user key
+  /* User Key 的话需要刨去最后的 (Sequence Number << 8) | Value Type */
   Slice user_key() const { return Slice(kstart_, end_ - kstart_ - 8); }
 
  private:
