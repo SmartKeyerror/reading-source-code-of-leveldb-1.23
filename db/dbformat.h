@@ -136,6 +136,8 @@ class InternalFilterPolicy : public FilterPolicy {
 // Modules in this directory should keep internal keys wrapped inside
 // the following class instead of plain strings so that we do not
 // incorrectly use string comparisons instead of an InternalKeyComparator.
+/* InternalKey 由 3 部分组成: User Key + Sequence Number + Value Type。
+ * Value Type 实际上只有两种，要么表示新增/更新一个 K-V，要么表示删除一个 Key */
 class InternalKey {
  private:
   std::string rep_;
