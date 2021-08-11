@@ -47,12 +47,15 @@ char* EncodeVarint32(char* dst, uint32_t v) {
   return reinterpret_cast<char*>(ptr);
 }
 
+/* PutVarint32 和 EncodeVarint32 不同，PutVarint32 会把 varint 结果写到 dst 的尾部 */
 void PutVarint32(std::string* dst, uint32_t v) {
+  /* int32 的varint 编码最长为 5 字节 */
   char buf[5];
   char* ptr = EncodeVarint32(buf, v);
   dst->append(buf, ptr - buf);
 }
 
+/* 注意，该方法调用后 dst 指针将会向后移动 1~10 字节，具体取决于 varint 编码大小 */
 char* EncodeVarint64(char* dst, uint64_t v) {
   static const int B = 128;
   uint8_t* ptr = reinterpret_cast<uint8_t*>(dst);
@@ -70,6 +73,8 @@ void PutVarint64(std::string* dst, uint64_t v) {
   dst->append(buf, ptr - buf);
 }
 
+/* PutLengthPrefixedSlice 只针对于 uint32_t，将 value.size 进行编码，并放在 dst 的尾部
+ * 该方法将会在 WriteBatch::Put() 方法中被调用 */
 void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {
   PutVarint32(dst, value.size());
   dst->append(value.data(), value.size());

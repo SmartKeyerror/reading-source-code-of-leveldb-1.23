@@ -39,10 +39,18 @@ namespace leveldb {
 class Arena;
 
 /*
- * SkipList 属于 leveldb 中的核心数据结构，也是 memory write buffer 的具体实现
+ * SkipList 属于 leveldb 中的核心数据结构，也是 memory table 的具体实现
  *
  * SkipList 的实现挺有意思的，leveldb 是一个 key-value DB，但是 SkipList 类中只定义了 Key，
  * 而没有定义 value。这是为什么?
+ *
+ * 因为 leveldb 直接将 User Key 和 User Value 打包成了一个更大的 Key，塞到了 Skip List 中。
+ *
+ * ┌───────────────┬─────────────────┬────────────────────────────┬───────────────┬───────────────┐
+ * │ size(varint32)│ User Key(string)│Sequence Number | kValueType│ size(varint32)│  User Value   │
+ * └───────────────┴─────────────────┴────────────────────────────┴───────────────┴───────────────┘
+ *        ↑
+ *  值为 user_key.size() + 8
  */
 template <typename Key, class Comparator>
 class SkipList {
