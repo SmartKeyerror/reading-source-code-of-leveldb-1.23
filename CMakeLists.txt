@@ -350,6 +350,7 @@ if(LEVELDB_BUILD_TESTS)
   leveldb_test("util/no_destructor_test.cc")
 
   if(NOT BUILD_SHARED_LIBS)
+    leveldb_test("debug/leveldb_debug.cc")
     leveldb_test("db/autocompact_test.cc")
     leveldb_test("db/corruption_test.cc")
     leveldb_test("db/db_test.cc")
@@ -493,3 +494,5 @@ if(LEVELDB_INSTALL)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
   )
 endif(LEVELDB_INSTALL)
+
+add_definitions("-g")
