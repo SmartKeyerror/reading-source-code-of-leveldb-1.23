@@ -44,6 +44,7 @@ namespace port {
 class CondVar;
 
 // Thinly wraps std::mutex.
+/* 对 std::mutex 的简单封装 */
 class LOCKABLE Mutex {
  public:
   Mutex() = default;
@@ -62,6 +63,7 @@ class LOCKABLE Mutex {
 };
 
 // Thinly wraps std::condition_variable.
+/* 对 std::condition_variable 的简单封装，配合 std::unique_lock() 使用 */
 class CondVar {
  public:
   explicit CondVar(Mutex* mu) : mu_(mu) { assert(mu != nullptr); }
