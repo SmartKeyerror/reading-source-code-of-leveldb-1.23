@@ -10,7 +10,7 @@ int main(){
   leveldb::Options options;
   options.create_if_missing = true;
 
-  leveldb::Status status = leveldb::DB::Open(options,"leveldb", &db);
+  leveldb::Status status = leveldb::DB::Open(options,"/Users/smartkeyerror/leveldb", &db);
 
   leveldb::WriteOptions writeOptions;
   writeOptions.sync = true;
@@ -18,8 +18,10 @@ int main(){
   std::string name = "smartkeyerror";
   std::string email = "smartkeyerror@gmail.com";
 
-  status = db->Put(writeOptions, name, email);
-  assert(status.ok());
+  for (int i = 0; i < 10000; i++) {
+    status = db->Put(writeOptions, name, email);
+    assert(status.ok());
+  }
 
   leveldb::ReadOptions readOptions;
 
@@ -28,6 +30,5 @@ int main(){
   assert(status.ok());
   std::cout << email << std::endl;
 
-  delete db;
   return 0;
 }
