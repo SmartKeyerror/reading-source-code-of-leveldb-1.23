@@ -11,6 +11,7 @@
 namespace leveldb {
 namespace log {
 
+/* 在 doc/log_format.md 中有详细的介绍下方枚举值的含义 */
 enum RecordType {
   // Zero is reserved for preallocated files
   kZeroType = 0,
@@ -24,6 +25,7 @@ enum RecordType {
 };
 static const int kMaxRecordType = kLastType;
 
+/* 每一个 Block 为 32KB */
 static const int kBlockSize = 32768;
 
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).
