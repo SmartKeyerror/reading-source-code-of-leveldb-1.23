@@ -18,7 +18,7 @@ int main(){
   std::string name = "smartkeyerror";
   std::string email = "smartkeyerror@gmail.com";
 
-  for (int i = 0; i < 10000; i++) {
+  for (int i = 0; i < 100000; i++) {
     status = db->Put(writeOptions, name, email);
     assert(status.ok());
   }
