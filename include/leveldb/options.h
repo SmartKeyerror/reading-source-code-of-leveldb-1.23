@@ -196,7 +196,8 @@ struct LEVELDB_EXPORT WriteOptions {
   // crash semantics as the "write()" system call.  A DB write
   // with sync==true has similar crash semantics to a "write()"
   // system call followed by "fsync()".
-  // 写入后是否需要同步刷盘，对于不同的的数据需要不同的 Option 选项
+  /* 写入预写日志后是否需要同步刷盘，对于不同的的数据需要不同的 Options 选项，
+   * 但是在绝大多数情况下该值为 true */
   bool sync = false;
 };
 

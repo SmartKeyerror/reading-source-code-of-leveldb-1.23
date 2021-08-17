@@ -3,7 +3,6 @@
 #include <iostream>
 #include "leveldb/db.h"
 
-using namespace std;
 
 int main(){
   leveldb::DB* db;
@@ -18,14 +17,14 @@ int main(){
   std::string name = "smartkeyerror";
   std::string email = "smartkeyerror@gmail.com";
 
-  for (int i = 0; i < 100000; i++) {
+  for (int i = 0; i < 1000; i++) {
     status = db->Put(writeOptions, name, email);
     assert(status.ok());
   }
 
   leveldb::ReadOptions readOptions;
 
-  string result;
+  std::string result;
   status = db->Get(readOptions, name, &result);
   assert(status.ok());
   std::cout << email << std::endl;
