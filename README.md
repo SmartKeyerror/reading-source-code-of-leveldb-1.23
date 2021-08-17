@@ -1,5 +1,5 @@
 
-## leveldb 源码解析
+## leveldb 源码阅读
 
 ### 1. Build && Install && Debug
 
@@ -21,3 +21,5 @@ cmake -DCMAKE_BUILD_TYPE=Debug .. && cmake --build .
 make && make install
 gdb leveldb_debug   # 此时 leveldb_debug 就在 build 目录下，可直接进行 gdb 调试
 ```
+
+如果使用 CLion 的话，可以直接对 `leveldb_debug.cc` 进行 debug，比 gdb 要更方便一些。
