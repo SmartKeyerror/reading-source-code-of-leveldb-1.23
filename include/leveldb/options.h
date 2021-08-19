@@ -48,6 +48,7 @@ struct LEVELDB_EXPORT Options {
   const Comparator* comparator;
 
   // If true, the database will be created if it is missing.
+  /* 当 DB 目录不存在时进行创建 */
   bool create_if_missing = false;
 
   // If true, an error is raised if the database already exists.
@@ -111,11 +112,15 @@ struct LEVELDB_EXPORT Options {
   // block size specified here corresponds to uncompressed data.  The
   // actual size of the unit read from disk may be smaller if
   // compression is enabled.  This parameter can be changed dynamically.
+  /* SSTable 中 Block 的大小 */
   size_t block_size = 4 * 1024;
 
   // Number of keys between restart points for delta encoding of keys.
   // This parameter can be changed dynamically.  Most clients should
   // leave this parameter alone.
+  /* SSTable 中重启点的个数，SSTable 中的 Key-Value 有序存储，那么就可以使用前缀压缩的方式
+   * 来节省存储空间，但是会增加查询的复杂度。因此，leveldb 引入重启点的概念，即每隔 K 个 key
+   * 就存储完整的 Key，而不进行前缀压缩处理，K 值默认为 16，也就是 block_restart_interval */
   int block_restart_interval = 16;
 
   // Leveldb will write up to this amount of bytes to a file before
@@ -126,6 +131,7 @@ struct LEVELDB_EXPORT Options {
   // compactions and hence longer latency/performance hiccups.
   // Another reason to increase this parameter might be when you are
   // initially populating a large database.
+  /* SSTable 问价的最大大小，默认为 2MB */
   size_t max_file_size = 2 * 1024 * 1024;
 
   // Compress blocks using the specified compression algorithm.  This
@@ -142,6 +148,7 @@ struct LEVELDB_EXPORT Options {
   // worth switching to kNoCompression.  Even if the input data is
   // incompressible, the kSnappyCompression implementation will
   // efficiently detect that and will switch to uncompressed mode.
+  /* SSTable 压缩算法 */
   CompressionType compression = kSnappyCompression;
 
   // EXPERIMENTAL: If true, append to existing MANIFEST and log files
