@@ -24,6 +24,9 @@ namespace leveldb {
 
 class Slice;
 
+/* SSTable filter 策略，用于快速查找 User Key 是否在当前 SSTable 中，默认为 Bloom Filter
+ * FilterPolicy 一共就两个接口: CreateFilter 和 KeyMayMatch。前者将已排好序的 User Key
+ * 添加到 dst 字符串中，而 KeyMayMatch 则是判断 key 是否在 Bloom Filter 中。*/
 class LEVELDB_EXPORT FilterPolicy {
  public:
   virtual ~FilterPolicy();

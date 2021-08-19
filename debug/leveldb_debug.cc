@@ -2,12 +2,15 @@
 #include <cassert>
 #include <iostream>
 #include "leveldb/db.h"
+#include "leveldb/filter_policy.h"
 
 
 int main(){
   leveldb::DB* db;
   leveldb::Options options;
+
   options.create_if_missing = true;
+  options.filter_policy = leveldb::NewBloomFilterPolicy(10);
 
   leveldb::Status status = leveldb::DB::Open(options,"/Users/smartkeyerror/leveldb", &db);
 

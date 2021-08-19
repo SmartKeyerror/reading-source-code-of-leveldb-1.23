@@ -14,6 +14,7 @@ static uint32_t BloomHash(const Slice& key) {
   return Hash(key.data(), key.size(), 0xbc9f1d34);
 }
 
+/* Bloom Filter */
 class BloomFilterPolicy : public FilterPolicy {
  public:
   explicit BloomFilterPolicy(int bits_per_key) : bits_per_key_(bits_per_key) {
@@ -85,6 +86,7 @@ class BloomFilterPolicy : public FilterPolicy {
 };
 }  // namespace
 
+/* 创建一个 BloomFilterPolicy 对象，bits_per_key 一般取 10 */
 const FilterPolicy* NewBloomFilterPolicy(int bits_per_key) {
   return new BloomFilterPolicy(bits_per_key);
 }
