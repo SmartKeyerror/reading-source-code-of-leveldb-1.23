@@ -1,4 +1,5 @@
-## leveldb 中的 varint 与 Key 组成
+
+# leveldb 中的 varint 与 Key 组成
 
 在 leveldb 中，int32 或者是 int64 采用的是变长存储，这一空间优化在 gRPC 中也有使用。其原理就是将原本需要使用 4 字节存储的 int32 或者是 8 字节存储的 int64 根据整数的实际大小使用不同的字节数进行存储。
 
@@ -7,11 +8,11 @@
 varint 是一种使用一个或多个字节序列化整数的方法，会把整数编码为变长字节。对于 32 位整型经过 varint 编码后需要 `1~5` 个字节，小的数字使用 1 字节，大的数字使用 5 字节。而 64 位整数根据 varint 编码后需要 `1~10` 个字节。在实际业务场景中，小整数的使用频率要远超于大整数的使用频率，因此使用 varint 编码能够有效的节省内存和硬盘的存储空间。
 
 
-### 1. varint 编码
+## 1. varint 编码
 
 首先，leveldb 对整数提供了两种类型的编码，一种是 fixedint，另一种则是 varint。其中 fixedint 就是将 `uint32_t` 或者是 `uint64_t` 转换成 `char *`，而 varint 则是对整型进行变长编码，并写入到 `char *dst` 中。关于编码的实现全部都在 `util/coding.cc` 文件中。
 
-#### 1.1 fixedint 编码
+### 1.1 fixedint 编码
 
 ```cpp
 inline void EncodeFixed32(char* dst, uint32_t value) {
@@ -25,7 +26,7 @@ inline void EncodeFixed32(char* dst, uint32_t value) {
 
 `EncodeFixed32()` 的实现非常简单，就是将 `value` 的每一个字节写入到 `dst` 中。并且可以看到，`value` 的低字节被写入到了 `buffer` 的低地址中。因此，数据存放的方式是按照先低位后高位的顺序存放的，也就是说，leveldb 采用的是小端存储（Little-Endian）。
 
-#### 1.2 varint 编码
+### 1.2 varint 编码
 
 对于 varint 编码而言，每一个字节的最高位为保留位，1 表示后面仍有数据，0 则表示当前字节是 varint 的结尾。也就是说，varint 的每一个字节只能使用 7 位，所以当我们有一个 64 位长度的整型需要进行 varint 编码时，必须使用 10 个字节才能表示。这比原来的 8 字节还要多出 2 个字节，所以，varint 并不适合用于大整数占比非常多的情况。
 
@@ -68,8 +69,7 @@ after encode:  0x7fd6c1405882
 说明 128 在使用 varint 时必须使用 2 字节存储，同时也说明了原来 `dst` 指针发生了改变。
 
 
-
-### 2. leveldb 中的 Key Format
+## 2. leveldb 中的 Key Format
 
 由于 leveldb 是一个 K-V 存储引擎，并且使用 LSM 这一追加写的数据结构作为底层存储，那么对于 Key 的设计就变得至关重要了。
 
@@ -83,7 +83,7 @@ InnoDB 存储引擎为了实现 MVCC 则是将一个全局递增的 Transaciton 
 
 实际上，User Key、Sequence Number 以及 Value Type 正是组成一个 Key 的必要组件，并且在这些组件之上还会有一些额外的扩展，这些扩展也只是简单地使用 Varint 来记录 User Key 的长度而已。
 
-#### 2.1 `InternalKey` 与 `ParsedInternalKey`
+### 2.1 `InternalKey` 与 `ParsedInternalKey`
 
 `InternalKey` 本质上就是一个字符串，由 User Key、Sequence Number 以及 Value Type 组成，是一个组合结构。而 `ParsedInternalKey` 其实就是对 `InternalKey` 的解析，将 User Key、Sequence Number 以及 Value Type 从 `InternalKey` 中提取出来，并保存起来。
 
@@ -129,7 +129,7 @@ inline bool ParseInternalKey(const Slice& internal_key, ParsedInternalKey* resul
 }
 ```
 
-#### 2.2 `LookupKey` 与 `MemTableKey`
+### 2.2 `LookupKey` 与 `MemTableKey`
 
 当我们查询一个 User Key 时，其查询顺序为 MemTable、Immutable Table 以及位于硬盘中的 SSTable。MemTable 所提供的 `Get()` 方法需要使用到 `LookupKey`，`LookupKey` 可以认为是一个“究极体”，从该对象中我们可以得到所有我们需要的信息，包括 User Key、User Key 的长度、Sequence Number 以及 Value Type。
 
@@ -155,7 +155,7 @@ public:
 };
 ```
 
-#### 2.3 MemTable Entry
+### 2.3 MemTable Entry
 
 leveldb 使用 Skip List 来实现位于内存中的 MemTable，并提供了 `Add()` 方法将 Key-Value 写入至 Skip List 中。在 Skip List 的实现中，我们并没有发现 Value 字段，这是因为 leveldb 将 User Key 和 User Value 打包成一个更大的 Key，直接塞到了 Skip List 中，具体实现可见 `MemTable::Add()` 方法。
 

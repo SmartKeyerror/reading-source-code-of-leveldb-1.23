@@ -1,4 +1,4 @@
-## SSTable——概览与 Data Block
+# SSTable——概览与 Data Block
 
 ![Alt text](images/1629167804004.png)
 
@@ -10,7 +10,7 @@
 - Index Block: 指向 Data Block 的索引，用于快速定位 Data Block。
 - Footer: 其中包含了 Metaindex Handle 和 Index Handle，其中 Metaindex Handle 指向 Metaindex Block 的起始位置和大小，Index Handle 则指向了 Index Block 的起始位置和大小，可以认为是索引的索引。
 
-### 1. Data Block
+## 1. Data Block
 
 User Key 和 User Value 在 leveldb 中是未做分离处理的，也就是说每一对 Key-Value 都会按照一定的顺序存储到 Data Block 中，并且 Data Block 是从文件起始位置连续存储的。在一个 Data Block 中，可能会有多条数据记录，同时由于这些数据记录是有序存储的（默认为字典序），那么相邻的两条数据之间的 User Key 就有很大的可能性出现前缀重叠，如下图的 4 个 User Key，它们都具有相同的 "sma" 前缀:
 
@@ -57,7 +57,7 @@ private:
 };
 ```
 
-#### 1.1 `BlockBuilder::Add()`
+### 1.1 `BlockBuilder::Add()`
 
 `BlockBuilder::Add(const Slice& key, const Slice& value)` 向 Block 中添加一个 User Key 与 User Value，由于 Block 中的数据是有序存储的，那么此时该 User Key 必须要大于最后一个被添加到 Block 的 User Key，也就是 `last_key_`:
 
@@ -114,7 +114,7 @@ assert(Slice(last_key_) == key);
 counter_++;
 ```
 
-#### 1.2 `BlockBuilder::Finish()`
+### 1.2 `BlockBuilder::Finish()`
 
 当上层调用方使用 `BlockBuilder::Add()` 方法向 `buffer_` 中添加数据并达到一定量级以后，就可以调用 `Finish()` 方法将 `restarts_` 数组压入到 `buffer_` 中并返回完整的 Data Block 数据了:
 

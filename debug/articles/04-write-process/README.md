@@ -1,4 +1,4 @@
-## leveldb 的写入流程
+# leveldb 的写入流程
 
 在前面一节中我们讨论了 leveldb 中的 varint 以及 Key 格式，用户所传入的 User Key 将会被封装成 MemTable Key，再加上 User Value 封装成 MemTable Entry 写入到 MemTable 中:
 
@@ -6,7 +6,7 @@
 
 在这一节中，就来分析一下 K-V 是如何被写入到硬盘中的。
 
-### 1. WriteBatch
+## 1. WriteBatch
 
 `include/leveldb/db.h` 中的 `DB` 类提供了 leveldb 对外的抽象 API，该类中所有的函数均为纯虚函数，也就是说，`DB` 类其实就是一个 Interface。不过，由于 C++ 语法的特殊性，`DB` 类也可以对纯虚函数进行实现，并且 leveldb 也给出了默认实现。
 
@@ -79,7 +79,7 @@ void WriteBatch::Put(const Slice& key, const Slice& value) {
 
 需要注意的是在 `rep_` 的起始位置存在 12 字节的预留位，用于填充这些 K-V 的起始 Sequence Number 以及 Count 计数。将多个 K-V 打包完成以后，将会调用 `DBImpl::Write()` 方法，正式进入 leveldb 的写入流程。
 
-### 2. 写入逻辑
+## 2. 写入逻辑
 
 在将数据写入预写日志文件之前，需要循环确认 leveldb 的状态，主要包括 MemTable 是否达到最大容量、Level-0 中的文件数是否已经达到某个阈值等。如果 MemTable 已经达到了最大容量，并且此时 Immutable MemTable 仍未 flush 到硬盘时，leveldb 将会等待后台线程完成其相关工作。这些判断均在 `MakeRoomForWrite()` 方法中进行:
 
