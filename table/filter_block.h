@@ -34,18 +34,25 @@ class FilterBlockBuilder {
   FilterBlockBuilder(const FilterBlockBuilder&) = delete;
   FilterBlockBuilder& operator=(const FilterBlockBuilder&) = delete;
 
+  /* 开始构建新的 Filter Block */
   void StartBlock(uint64_t block_offset);
+
+  /*添加一个新的 key，将在 `TableBuilder` 中被调用*/
   void AddKey(const Slice& key);
+
+  /*结束 Filter Block 的构建，并返回 Filter Block 的完整内容*/
   Slice Finish();
 
  private:
-  void GenerateFilter();
+  void GenerateFilter();          /* 构建一个 Filter */
 
-  const FilterPolicy* policy_;
-  std::string keys_;             // Flattened key contents
-  std::vector<size_t> start_;    // Starting index in keys_ of each key
-  std::string result_;           // Filter data computed so far
-  std::vector<Slice> tmp_keys_;  // policy_->CreateFilter() argument
+  const FilterPolicy* policy_;    /* filter 类型，如 BloomFilterPolicy */
+  std::string keys_;              /* User Keys，全部塞到一个 string 中 */
+  std::vector<size_t> start_;     /* 每一个 User Key 在 keys_ 中的起始位置 */
+  std::string result_;            /* keys_ 通过 policy_ 计算出来的 filtered data */
+  std::vector<Slice> tmp_keys_;   /* policy_->CreateFilter() 的参数 */
+
+  /* filter 在 result_ 中的位置, filter_offsets_.size() 就是 Bloom Filter 的数量 */
   std::vector<uint32_t> filter_offsets_;
 };
 
