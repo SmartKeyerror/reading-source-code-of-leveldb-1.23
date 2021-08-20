@@ -1,6 +1,8 @@
 
 ## leveldb 源码阅读
 
+![](leveldb.png)
+
 ### 1. Build && Install && Debug
 
 leveldb 本身是一个 Key-Value 存储引擎，因此并没有提供 `main` 入口函数，所以需要自行添加。笔者将其放到了 `debug/leveldb_debug.cc` 文件中，并在 `CMakeLists.txtx` 中将其加入:
