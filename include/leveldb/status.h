@@ -41,7 +41,7 @@ class LEVELDB_EXPORT Status {
   static Status OK() { return Status(); }
 
   // Return error status of an appropriate type.
-  // 等会儿，为什么需要有个 msg2 ? 而且其默认值还是一个空的 Slice，猜测可能是一个预留的扩展位
+  // msg2 通常用于存储系统调用所返回的错误码，也就是 errno
   static Status NotFound(const Slice& msg, const Slice& msg2 = Slice()) {
     return Status(kNotFound, msg, msg2);
   }
