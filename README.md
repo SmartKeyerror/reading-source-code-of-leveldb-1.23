@@ -29,7 +29,7 @@ gdb leveldb_debug   # 此时 leveldb_debug 就在 build 目录下，可直接进
 ### 2. leveldb 核心流程梳理
 
 1. leveldb 概述与 LSM-Tree
-2. leveldb 中的常用数据结构
+2. [leveldb 中的常用数据结构](/debug/articles/02-data-structure/README.md)
 3. [leveldb 中的 varint 与 Key 组成](/debug/articles/03-varint-and-key-format/README.md)
 4. [leveldb Key-Value 写入流程分析](/debug/articles/04-write-process/README.md)
 5. [leveldb 预写日志格式及其读写流程](/debug/articles/05-WAL/README.md)
