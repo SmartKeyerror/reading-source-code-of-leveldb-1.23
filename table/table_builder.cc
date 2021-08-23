@@ -35,17 +35,17 @@ struct TableBuilder::Rep {
     index_block_options.block_restart_interval = 1;
   }
 
-  Options options;
-  Options index_block_options;
-  WritableFile* file;
-  uint64_t offset;
-  Status status;
-  BlockBuilder data_block;
-  BlockBuilder index_block;
-  std::string last_key;
-  int64_t num_entries;
+  Options options;              /* Data Block Options */
+  Options index_block_options;  /* Index Block Options */
+  WritableFile* file;           /* 抽象类，决定了如何进行文件的写入，主要实现为 PosixWritableFile */
+  uint64_t offset;              /* Data Block 在 SSTable 中的文件偏移量 */
+  Status status;                /* 操作状态 */
+  BlockBuilder data_block;      /* 构建 Data Block 所需的 BlockBuilder */
+  BlockBuilder index_block;     /* 构建 Index Block 所需的 BlockBuilder */
+  std::string last_key;         /* 当前 Data Block 的最后一个写入 key */
+  int64_t num_entries;          /* 当前 Data Block 的写入数量 */
   bool closed;  // Either Finish() or Abandon() has been called.
-  FilterBlockBuilder* filter_block;
+  FilterBlockBuilder* filter_block; /* 构建 Filter Block 所需的 BlockBuilder */
 
   // We do not emit the index entry for a block until we have seen the
   // first key for the next data block.  This allows us to use shorter
@@ -59,7 +59,7 @@ struct TableBuilder::Rep {
   bool pending_index_entry;
   BlockHandle pending_handle;  // Handle to add to index block
 
-  std::string compressed_output;
+  std::string compressed_output;  /* 压缩之后的 Data Block */
 };
 
 TableBuilder::TableBuilder(const Options& options, WritableFile* file)
