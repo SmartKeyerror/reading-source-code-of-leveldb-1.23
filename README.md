@@ -33,10 +33,10 @@ gdb leveldb_debug   # 此时 leveldb_debug 就在 build 目录下，可直接进
 3. [leveldb 中的 varint 与 Key 组成](/debug/articles/03-varint-and-key-format/README.md)
 4. [leveldb Key-Value 写入流程分析](/debug/articles/04-write-process/README.md)
 5. [leveldb 预写日志格式及其读写流程](/debug/articles/05-WAL/README.md)
-6. [SSTable(01)——概览与 Data Block](/debug/articles/06-SSTable-data-block/README.md)
-7. [SSTable(02)——Bloom Filter 与 Meta Block](/debug/articles/07-SSTable-meta-block/README.md)
-8. SSTable(03)——Metaindex Block 与 Index Block   
-9. SSTable(03)——Table Builder
-10. Compaction(01)——何时触发 Compaction ?
-11. Compaction(02)——Minor Compaction
-12. Compaction(03)——Major Compaction
+6. [SSTable(01)—概览与 Data Block](/debug/articles/06-SSTable-data-block/README.md)
+7. [SSTable(02)—Bloom Filter 与 Meta Block](/debug/articles/07-SSTable-meta-block/README.md)
+8. SSTable(03)—Metaindex Block 与 Index Block   
+9. SSTable(03)—Table Builder
+10. Compaction(01)—何时触发 Compaction ?
+11. Compaction(02)—Minor Compaction
+12. Compaction(03)—Major Compaction
