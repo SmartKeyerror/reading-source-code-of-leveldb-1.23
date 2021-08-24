@@ -25,11 +25,13 @@ class BlockBuilder;
 class BlockHandle;
 class WritableFile;
 
+/* TableBuilder 实现 */
 class LEVELDB_EXPORT TableBuilder {
  public:
   // Create a builder that will store the contents of the table it is
   // building in *file.  Does not close the file.  It is up to the
   // caller to close the file after calling Finish().
+  /* WritableFile 通常为 PosixWritableFile */
   TableBuilder(const Options& options, WritableFile* file);
 
   TableBuilder(const TableBuilder&) = delete;
@@ -49,12 +51,14 @@ class LEVELDB_EXPORT TableBuilder {
   // Add key,value to the table being constructed.
   // REQUIRES: key is after any previously added key according to comparator.
   // REQUIRES: Finish(), Abandon() have not been called
+  /* 向 TableBuilder 中添加 Key-Value */
   void Add(const Slice& key, const Slice& value);
 
   // Advanced operation: flush any buffered key/value pairs to file.
   // Can be used to ensure that two adjacent entries never live in
   // the same data block.  Most clients should not need to use this method.
   // REQUIRES: Finish(), Abandon() have not been called
+  /* 结束当前 Block 的构建 */
   void Flush();
 
   // Return non-ok iff some error has been detected.
@@ -63,6 +67,7 @@ class LEVELDB_EXPORT TableBuilder {
   // Finish building the table.  Stops using the file passed to the
   // constructor after this function returns.
   // REQUIRES: Finish(), Abandon() have not been called
+  /* 结束 Table 的构建 */
   Status Finish();
 
   // Indicate that the contents of this builder should be abandoned.  Stops
@@ -70,9 +75,11 @@ class LEVELDB_EXPORT TableBuilder {
   // If the caller is not going to call Finish(), it must call Abandon()
   // before destroying this builder.
   // REQUIRES: Finish(), Abandon() have not been called
+  /* 放弃 Table 的构建 */
   void Abandon();
 
   // Number of calls to Add() so far.
+  /* 一共添加了多少 Key-Value 对 */
   uint64_t NumEntries() const;
 
   // Size of the file generated so far.  If invoked after a successful
@@ -81,9 +88,12 @@ class LEVELDB_EXPORT TableBuilder {
 
  private:
   bool ok() const { return status().ok(); }
+  /* 序列化需要写入的 Data Block */
   void WriteBlock(BlockBuilder* block, BlockHandle* handle);
+  /* 将压缩后的数据写入文件中 */
   void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle);
 
+  /* Rep 的作用就是隐藏具体实现 */
   struct Rep;
   Rep* rep_;
 };

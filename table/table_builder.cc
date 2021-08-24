@@ -91,33 +91,48 @@ Status TableBuilder::ChangeOptions(const Options& options) {
   return Status::OK();
 }
 
+/* 此时的 key 仍然为 InternalKey，也就是 User Key + Sequence Number | Value Type */
 void TableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
-  assert(!r->closed);
+  assert(!r->closed);   /* 判断当前 Build 过程是否结束 */
   if (!ok()) return;
   if (r->num_entries > 0) {
+    /* 判断当前 key 是否大于 last_key */
     assert(r->options.comparator->Compare(key, Slice(r->last_key)) > 0);
   }
 
+  /* 在构建下一个 Data Block 之前，将 Index Block 构建出来 */
   if (r->pending_index_entry) {
     assert(r->data_block.empty());
+
+    /* 通过 last_key 和 当前 key 计算得到一个 X，使得 last_entry <= X < key  */
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
+
+    /* 向 Index Block 中添加上一个 Data Block 的 Index */
     r->index_block.Add(r->last_key, Slice(handle_encoding));
+
+    /* 上一个 Data Block 的 Index Block 已经写完，故更新 pending_index_entry 为 false */
     r->pending_index_entry = false;
   }
 
+  /* 若指定了 FilterPolicy，那么就会写入 Filter Block */
   if (r->filter_block != nullptr) {
     r->filter_block->AddKey(key);
   }
 
+  /* 更新 last_key */
   r->last_key.assign(key.data(), key.size());
+  /* 更新 Key-Value 写入数量 */
   r->num_entries++;
+  /* 将数据添加至 Data Block 中 */
   r->data_block.Add(key, value);
 
+  /* Data Block 的默认大小为 4KB */
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
   if (estimated_block_size >= r->options.block_size) {
+    /* 结束当前 Block 的构建，Flush() 方法内部将会把 pending_index_entry 置为 True */
     Flush();
   }
 }
@@ -128,12 +143,17 @@ void TableBuilder::Flush() {
   if (!ok()) return;
   if (r->data_block.empty()) return;
   assert(!r->pending_index_entry);
+
+  /* 对 Data Block 进行压缩，并生成 Block Handle */
   WriteBlock(&r->data_block, &r->pending_handle);
   if (ok()) {
+    /* 设置 pending_index_entry 为 true，下一次写入 Data Block 时，需构建 Index Block */
     r->pending_index_entry = true;
+    /* 将数据写入至内核缓冲区 */
     r->status = r->file->Flush();
   }
   if (r->filter_block != nullptr) {
+    /* 创建一个新的 Filter Block */
     r->filter_block->StartBlock(r->offset);
   }
 }
@@ -145,9 +165,13 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   //    crc: uint32
   assert(ok());
   Rep* r = rep_;
+
+  /* 获取 Data Block 的全部数据 */
   Slice raw = block->Finish();
 
   Slice block_contents;
+
+  /* 默认压缩方式为 kSnappyCompression */
   CompressionType type = r->options.compression;
   // TODO(postrelease): Support more compression options: zlib?
   switch (type) {
@@ -157,20 +181,24 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
 
     case kSnappyCompression: {
       std::string* compressed = &r->compressed_output;
+
+      /* 进行 snappy 压缩，并且只有在压缩率大于 12.5 时才会选用压缩结果 */
       if (port::Snappy_Compress(raw.data(), raw.size(), compressed) &&
           compressed->size() < raw.size() - (raw.size() / 8u)) {
         block_contents = *compressed;
       } else {
-        // Snappy not supported, or compressed less than 12.5%, so just
-        // store uncompressed form
+        /* 未配置压缩算法，或者是使用 snappy 压缩时压缩率低于 12.5% */
         block_contents = raw;
         type = kNoCompression;
       }
       break;
     }
   }
+  /* 将处理后的 block contents、压缩类型以及 block handle 写入到文件中 */
   WriteRawBlock(block_contents, type, handle);
+  /* 清空临时存储 buffer */
   r->compressed_output.clear();
+  /* 清空 Data Block */
   block->Reset();
 }
 
@@ -197,6 +225,8 @@ Status TableBuilder::status() const { return rep_->status; }
 
 Status TableBuilder::Finish() {
   Rep* r = rep_;
+
+  /* 将最后一个 Data Block 写入 */
   Flush();
   assert(!r->closed);
   r->closed = true;
@@ -215,6 +245,7 @@ Status TableBuilder::Finish() {
     if (r->filter_block != nullptr) {
       // Add mapping from "filter.Name" to location of filter data
       std::string key = "filter.";
+      /* 若使用 Bloom Filter，key 的值为 filter.leveldb.BuiltinBloomFilter2 */
       key.append(r->options.filter_policy->Name());
       std::string handle_encoding;
       filter_block_handle.EncodeTo(&handle_encoding);
@@ -222,6 +253,7 @@ Status TableBuilder::Finish() {
     }
 
     // TODO(postrelease): Add stats and other meta blocks
+    /* 写入 Metaindex Block */
     WriteBlock(&meta_index_block, &metaindex_block_handle);
   }
 
