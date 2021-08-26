@@ -23,6 +23,7 @@ struct ReadOptions;
 class BlockHandle {
  public:
   // Maximum encoding length of a BlockHandle
+  /* BlockHandle 的最大长度，即 20 字节。为啥是 20 字节? */
   enum { kMaxEncodedLength = 10 + 10 };
 
   BlockHandle();
@@ -39,8 +40,8 @@ class BlockHandle {
   Status DecodeFrom(Slice* input);
 
  private:
-  uint64_t offset_;
-  uint64_t size_;
+  uint64_t offset_;   /* 偏移量 */
+  uint64_t size_;     /* 数据大小 */
 };
 
 // Footer encapsulates the fixed information stored at the tail
@@ -50,6 +51,8 @@ class Footer {
   // Encoded length of a Footer.  Note that the serialization of a
   // Footer will always occupy exactly this many bytes.  It consists
   // of two block handles and a magic number.
+
+  /* 固定大小，48 字节，不足 48 字节时将使用 padding 填充 */
   enum { kEncodedLength = 2 * BlockHandle::kMaxEncodedLength + 8 };
 
   Footer() = default;
@@ -66,8 +69,8 @@ class Footer {
   Status DecodeFrom(Slice* input);
 
  private:
-  BlockHandle metaindex_handle_;
-  BlockHandle index_handle_;
+  BlockHandle metaindex_handle_;    /* 索引 Metaindex Block */
+  BlockHandle index_handle_;        /* 索引 Index Block */
 };
 
 // kTableMagicNumber was picked by running
