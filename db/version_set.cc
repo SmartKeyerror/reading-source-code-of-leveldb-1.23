@@ -118,6 +118,12 @@ static bool BeforeFile(const Comparator* ucmp, const Slice* user_key,
           ucmp->Compare(*user_key, f->smallest.user_key()) < 0);
 }
 
+/*
+ * SomeFileOverlapsRange() 做的事情其实就是判断 New SSTable 和当前 level 是否存在重叠的 Key。
+ *
+ * disjoint_sorted_files 表示是否互斥，只有在计算 level 0 时该值为 false，其余情况为 true;
+ * files 为每一层的 FileMetaData 记录，包括 level 0 层
+ * */
 bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
                            bool disjoint_sorted_files,
                            const std::vector<FileMetaData*>& files,
@@ -128,6 +134,8 @@ bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
     // Need to check against all files
     for (size_t i = 0; i < files.size(); i++) {
       const FileMetaData* f = files[i];
+
+      /* 判断是否存在重叠 */
       if (AfterFile(ucmp, smallest_user_key, f) ||
           BeforeFile(ucmp, largest_user_key, f)) {
         // No overlap
@@ -467,22 +475,33 @@ bool Version::OverlapInLevel(int level, const Slice* smallest_user_key,
                                smallest_user_key, largest_user_key);
 }
 
+/* 决定将 New SSTable 推送到哪一层，其中 smallest_user_key 与 largest_user_key
+ * 表示 New SSTable 的最小 Key 值和最大 Key 值 */
 int Version::PickLevelForMemTableOutput(const Slice& smallest_user_key,
                                         const Slice& largest_user_key) {
   int level = 0;
+
+  /* 判断 New SSTable 是否和 level 0 层有 key 重叠 */
   if (!OverlapInLevel(0, &smallest_user_key, &largest_user_key)) {
     // Push to next level if there is no overlap in next level,
     // and the #bytes overlapping in the level after that are limited.
     InternalKey start(smallest_user_key, kMaxSequenceNumber, kValueTypeForSeek);
     InternalKey limit(largest_user_key, 0, static_cast<ValueType>(0));
     std::vector<FileMetaData*> overlaps;
+
+    /* kMaxMemCompactLevel 默认为 2 */
     while (level < config::kMaxMemCompactLevel) {
+
+      /* 如果 New SSTable 和当前 level+1 层有重叠的话，直接退出循环，并直接返回 level。
+       * 也就是说，假如说 New SSTable 和 level 0 没有重叠，但是和 level 1 有重叠的话，将返回 level 0 */
       if (OverlapInLevel(level + 1, &smallest_user_key, &largest_user_key)) {
         break;
       }
       if (level + 2 < config::kNumLevels) {
         // Check that file does not overlap too many grandparent bytes.
         GetOverlappingInputs(level + 2, &start, &limit, &overlaps);
+
+        /* 这里是一个预估值，因为文件上的 key 不可能是均匀分布的 */
         const int64_t sum = TotalFileSize(overlaps);
         if (sum > MaxGrandParentOverlapBytes(vset_->options_)) {
           break;

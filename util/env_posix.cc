@@ -778,6 +778,8 @@ PosixEnv::PosixEnv()
       mmap_limiter_(MaxMmaps()),
       fd_limiter_(MaxOpenFiles()) {}
 
+/* Schedule 方法比较简单，只是将对应的任务函数和函数参数推入至工作队列中，由 BackgroundThreadMain()
+ * 方法取出任务并执行 */
 void PosixEnv::Schedule(
     void (*background_work_function)(void* background_work_arg),
     void* background_work_arg) {
@@ -786,7 +788,9 @@ void PosixEnv::Schedule(
   // Start the background thread, if we haven't done so already.
   if (!started_background_thread_) {
     started_background_thread_ = true;
+    /* 启动 Entry Point 线程，本质上就是一个死循环，从任务队列中取出任务并执行 */
     std::thread background_thread(PosixEnv::BackgroundThreadEntryPoint, this);
+    /* 线程要么调用 detach() 和当前线程分离，要么调用 join() 方法等待其执行完毕 */
     background_thread.detach();
   }
 
@@ -799,6 +803,8 @@ void PosixEnv::Schedule(
   background_work_mutex_.Unlock();
 }
 
+/* 从 background_work_queue_ 中取出一个任务并执行，由于任务队列并没有最大数量限制，所以不需要
+ * 在取出数据以后 notify 其它线程，一个很简易的实现 */
 void PosixEnv::BackgroundThreadMain() {
   while (true) {
     background_work_mutex_.Lock();

@@ -1,8 +1,44 @@
 
+#include <vector>
+#include <thread>
 #include <cassert>
 #include <iostream>
+#include <random>
 #include "leveldb/db.h"
 #include "leveldb/filter_policy.h"
+
+
+std::string decimalTo62(long long n) {
+  char characters[] = "0123456789abcdefghijklmnopqrstuvwxyz"
+                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  std::string result;
+
+  while (n) {
+    result.push_back(characters[n % 62]);
+    n = n / 62;
+  }
+
+  while (result.size() < 6) {
+    result.push_back('0');
+  }
+
+  reverse(result.begin(), result.end());
+  return result;
+}
+
+void putData(leveldb::DB *db, leveldb::WriteOptions *writeOptions, int keyCount,
+             int init, int steps) {
+
+  int decimal = init;
+  while (keyCount > 0) {
+    std::string key = decimalTo62(decimal);
+    std::string value = key + key;
+    db->Put(*writeOptions, key, value);
+    decimal += steps;
+    keyCount--;
+  }
+}
 
 
 int main(){
@@ -17,20 +53,18 @@ int main(){
   leveldb::WriteOptions writeOptions;
   writeOptions.sync = true;
 
-  std::string name = "smartkeyerror";
-  std::string email = "smartkeyerror@gmail.com";
+  int numThreads = 16;
+  int total = 500000;
 
-  for (int i = 0; i < 10000; i++) {
-    status = db->Put(writeOptions, name, email);
-    assert(status.ok());
+  std::vector<std::thread> threads(numThreads);
+
+  for (int i = 0; i < numThreads; i++) {
+    threads[i] = std::thread(putData, db, &writeOptions, total / numThreads, i, numThreads);
   }
 
-  leveldb::ReadOptions readOptions;
-
-  std::string result;
-  status = db->Get(readOptions, name, &result);
-  assert(status.ok());
-  std::cout << email << std::endl;
+  for (auto& t : threads) {
+    t.join();
+  }
 
   return 0;
 }

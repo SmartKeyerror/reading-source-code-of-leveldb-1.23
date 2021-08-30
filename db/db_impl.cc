@@ -516,6 +516,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
+    /* 根据 Immutable MemTable 构建 SSTable */
     s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
     mutex_.Lock();
   }
@@ -533,6 +534,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     const Slice min_user_key = meta.smallest.user_key();
     const Slice max_user_key = meta.largest.user_key();
     if (base != nullptr) {
+      /* 决定将 New SSTable 推送到哪一层 */
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size, meta.smallest,
@@ -659,6 +661,7 @@ void DBImpl::RecordBackgroundError(const Status& s) {
   }
 }
 
+/* Compaction 入口函数 */
 void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
   if (background_compaction_scheduled_) {
@@ -671,6 +674,7 @@ void DBImpl::MaybeScheduleCompaction() {
              !versions_->NeedsCompaction()) {
     // No work to be done
   } else {
+    /* 设置 background_compaction_scheduled_ 标志位，并将 BGWork 方法加入线程池中 */
     background_compaction_scheduled_ = true;
     env_->Schedule(&DBImpl::BGWork, this);
   }
@@ -702,6 +706,8 @@ void DBImpl::BackgroundCall() {
 void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
+  /* 当 Immutable MemTable 不为空时，属于 Minor Compaction，即将 Immutable MemTable
+   * 写入至 level-0 或 level-1 或 level-2 中 */
   if (imm_ != nullptr) {
     CompactMemTable();
     return;
