@@ -37,6 +37,5 @@ gdb leveldb_debug   # 此时 leveldb_debug 就在 build 目录下，可直接进
 7. [SSTable(02)—Bloom Filter 与 Meta Block](/debug/articles/07-SSTable-meta-block/README.md)
 8. [SSTable(03)—SSTable 之索引](/debug/articles/08-SSTable-index/README.md)
 9. [SSTable(04)—Table Builder](/debug/articles/09-SSTable-table-builder/README.md)
-10. Compaction(01)—何时触发 Compaction ?
-11. Compaction(02)—Minor Compaction
-12. Compaction(03)—Major Compaction
+10. Compaction(02)—Minor Compaction
+11. Compaction(03)—Major Compaction
