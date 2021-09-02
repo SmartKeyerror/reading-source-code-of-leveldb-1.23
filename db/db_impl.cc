@@ -543,8 +543,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
 
   /* 3. 记录元数据信息 */
   CompactionStats stats;
+
+  /* 记录 Build Table 持续时间与 Table 大小 */
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
+  /* 记录 New SSTable 最终被推到哪一个 level */
   stats_[level].Add(stats);
   return s;
 }
