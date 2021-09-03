@@ -718,9 +718,13 @@ void DBImpl::BackgroundCompaction() {
   }
 
   Compaction* c;
+
+  /* 判断是否执行 Manual Compaction，由 DBImpl::CompactRange 触发 */
   bool is_manual = (manual_compaction_ != nullptr);
   InternalKey manual_end;
+
   if (is_manual) {
+    /* 手动对 SSTable 执行 Compaction，可能会造成 DB 的较大抖动 */
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == nullptr);
@@ -733,6 +737,7 @@ void DBImpl::BackgroundCompaction() {
         (m->end ? m->end->DebugString().c_str() : "(end)"),
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
   } else {
+    /* Size Compaction 或者是 Seek Compaction */
     c = versions_->PickCompaction();
   }
 

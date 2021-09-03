@@ -57,6 +57,10 @@ bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
                            const Slice* smallest_user_key,
                            const Slice* largest_user_key);
 
+/* SSTable 版本控制。在 leveldb 中，一个 Version 就表示了一个数据库版本，它记录了当前磁盘和内存中
+ * 的所有数据信息。CURRENT 指向最新的 Version，所有的 Version 加起来就组成了 VersionSet。
+ *
+ * VersionEdit 表示一个增量（delta），那么 version 1 + VersionEdit = version 2 */
 class Version {
  public:
   // Lookup the value for key.  If found, store it in *val and
@@ -146,20 +150,29 @@ class Version {
                           bool (*func)(void*, int, FileMetaData*));
 
   VersionSet* vset_;  // VersionSet to which this Version belongs
+
+  /* 多个 Version 之间组成双向链表 */
   Version* next_;     // Next version in linked list
   Version* prev_;     // Previous version in linked list
   int refs_;          // Number of live refs to this version
 
-  // List of files per level
+  /* 每一个 level 所包含的全部 .ldb 文件，由 FileMetaData 表示 */
   std::vector<FileMetaData*> files_[config::kNumLevels];
 
-  // Next file to compact based on seek stats.
+  /* Next file to compact based on seek stats.
+   * 根据 Seek 的过程决定下一次选定的 Compaction 文件和目标 level */
   FileMetaData* file_to_compact_;
   int file_to_compact_level_;
 
-  // Level that should be compacted next and its compaction score.
-  // Score < 1 means compaction is not strictly needed.  These fields
-  // are initialized by Finalize().
+  /*
+   * Level that should be compacted next and its compaction score.
+   * Score < 1 means compaction is not strictly needed.  These fields
+   * are initialized by Finalize().
+   *
+   * leveldb 中的 Size Compaction 发生在某一个 level 中文件总大小超过阈值时，score 是通过
+   * `level 总文件大小 / 此 level 阈值` 所得到的，那么 compaction_score_ 就是这些 score 中
+   * 最大的那一个，也就是找出最需要 Compaction 的 level。
+   * */
   double compaction_score_;
   int compaction_level_;
 };
@@ -316,6 +329,7 @@ class VersionSet {
 };
 
 // A Compaction encapsulates information about a compaction.
+// 记录 Compaction 信息
 class Compaction {
  public:
   ~Compaction();

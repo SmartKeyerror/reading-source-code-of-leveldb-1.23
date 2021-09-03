@@ -1269,6 +1269,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   return result;
 }
 
+/* 选择最终要执行的 Compaction 类型: Size Compaction or Seek Compaction */
 Compaction* VersionSet::PickCompaction() {
   Compaction* c;
   int level;

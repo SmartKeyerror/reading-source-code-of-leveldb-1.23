@@ -15,17 +15,19 @@ namespace leveldb {
 
 class VersionSet;
 
+/* 记录了一个 SSTable 的元信息 */
 struct FileMetaData {
   FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) {}
 
-  int refs;
-  int allowed_seeks;  // Seeks allowed until compaction
-  uint64_t number;
-  uint64_t file_size;    // File size in bytes
-  InternalKey smallest;  // Smallest internal key served by table
-  InternalKey largest;   // Largest internal key served by table
+  int refs;             /* 引用计数，表示当前 SSTable 被多少个 Version 所引用 */
+  int allowed_seeks;    /* 当前 SSTable 允许被 Seek 的次数 */
+  uint64_t number;      /* SSTable 文件记录编号 */
+  uint64_t file_size;   /* SSTable 文件大小 */
+  InternalKey smallest; /* 最小 Key 值 */
+  InternalKey largest;  /* 最大 Key 值 */
 };
 
+/* Version N + VersionEdit => Version N+1，VersionEdit 记录了增量 */
 class VersionEdit {
  public:
   VersionEdit() { Clear(); }
@@ -33,6 +35,7 @@ class VersionEdit {
 
   void Clear();
 
+  /* 设置 Comparactor Name，默认为 leveldb.BytewiseComparator */
   void SetComparatorName(const Slice& name) {
     has_comparator_ = true;
     comparator_ = name.ToString();
@@ -75,6 +78,7 @@ class VersionEdit {
     deleted_files_.insert(std::make_pair(level, file));
   }
 
+  /* 将 VersionEdit 序列化成 string */
   void EncodeTo(std::string* dst) const;
   Status DecodeFrom(const Slice& src);
 
@@ -83,21 +87,25 @@ class VersionEdit {
  private:
   friend class VersionSet;
 
+  /* 其中的 pair 为 level + 文件编号，表示被删除的 .ldb 文件 */
   typedef std::set<std::pair<int, uint64_t>> DeletedFileSet;
 
-  std::string comparator_;
-  uint64_t log_number_;
-  uint64_t prev_log_number_;
-  uint64_t next_file_number_;
-  SequenceNumber last_sequence_;
-  bool has_comparator_;
+  std::string comparator_;        /* Comparator 名称 */
+  uint64_t log_number_;           /* 日志编号 */
+  uint64_t prev_log_number_;      /* 前一个日志编号 */
+  uint64_t next_file_number_;     /* 下一个文件编号 */
+  SequenceNumber last_sequence_;  /* 最大序列号 */
+
+  bool has_comparator_;           /* 上面 5 个变量的 Exist 标志位*/
   bool has_log_number_;
   bool has_prev_log_number_;
   bool has_next_file_number_;
   bool has_last_sequence_;
 
   std::vector<std::pair<int, InternalKey>> compact_pointers_;
-  DeletedFileSet deleted_files_;
+  DeletedFileSet deleted_files_;  /* 记录哪些文件被删除了 */
+
+  /* 记录哪一层新增了哪些 .ldb 文件，并且使用 FileMetaData 来表示 */
   std::vector<std::pair<int, FileMetaData>> new_files_;
 };
 
