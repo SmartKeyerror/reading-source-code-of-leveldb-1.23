@@ -38,4 +38,5 @@ gdb leveldb_debug   # 此时 leveldb_debug 就在 build 目录下，可直接进
 8. [SSTable(03)—SSTable 之索引](/debug/articles/08-SSTable-index/README.md)
 9. [SSTable(04)—Table Builder](/debug/articles/09-SSTable-table-builder/README.md)
 10. [Compaction(01)—Minor Compaction](/debug/articles/10-minor-compaction/README.md)
-11. Compaction(02)—Major Compaction
+11. [leveldb 版本控制概览](/debug/articles/11-version-control-overview/README.md)    
+12. Compaction(02)—Major Compaction
