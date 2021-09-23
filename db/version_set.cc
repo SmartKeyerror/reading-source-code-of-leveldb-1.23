@@ -42,7 +42,7 @@ static double MaxBytesForLevel(const Options* options, int level) {
   // Note: the result for level zero is not really used since we set
   // the level-0 compaction threshold based on number of files.
 
-  // Result for both level-0 and level-1
+  /* 1048576 = 1024 * 1024，也就是说，第一层的阈值为 10M */
   double result = 10. * 1048576.0;
   while (level > 1) {
     result *= 10;
@@ -1048,6 +1048,7 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
   }
 }
 
+/* 虽然函数名称叫做 Finalize，但实际上是在 pick 出下一次需要 Compaction 的 level */
 void VersionSet::Finalize(Version* v) {
   // Precomputed best level for next compaction
   int best_level = -1;
@@ -1067,15 +1068,17 @@ void VersionSet::Finalize(Version* v) {
       // file size is small (perhaps because of a small write-buffer
       // setting, or very high compression ratios, or lots of
       // overwrites/deletions).
+      /* level 0 不看大小，只看 SSTable 的个数 */
       score = v->files_[level].size() /
               static_cast<double>(config::kL0_CompactionTrigger);
     } else {
-      // Compute the ratio of current size to size limit.
+      /* 获取当前 level SSTables 实际大小 */
       const uint64_t level_bytes = TotalFileSize(v->files_[level]);
-      score =
-          static_cast<double>(level_bytes) / MaxBytesForLevel(options_, level);
+      /* 计算 score 值，如果 level_bytes 超出阈值的话，那么 score 将大于 1 */
+      score = static_cast<double>(level_bytes) / MaxBytesForLevel(options_, level);
     }
 
+    /* 注意这里是在 for 循环中进行的，也就是寻找所有 level 中，score 最大的那个 level */
     if (score > best_score) {
       best_level = level;
       best_score = score;
@@ -1278,21 +1281,29 @@ Compaction* VersionSet::PickCompaction() {
   // the compactions triggered by seeks.
   const bool size_compaction = (current_->compaction_score_ >= 1);
   const bool seek_compaction = (current_->file_to_compact_ != nullptr);
+
+  /* 优先级: size_compaction > seek_compaction */
   if (size_compaction) {
-    level = current_->compaction_level_;
+    level = current_->compaction_level_;    /* 获取待 Compact 的 level */
     assert(level >= 0);
     assert(level + 1 < config::kNumLevels);
     c = new Compaction(options_, level);
 
-    // Pick the first file that comes after compact_pointer_[level]
+    /* Pick the first file that comes after compact_pointer_[level]
+     * 遍历 files_[level] 所有 SSTable */
     for (size_t i = 0; i < current_->files_[level].size(); i++) {
+      /* 取得每一个 SSTable 的  FileMetaData*/
       FileMetaData* f = current_->files_[level][i];
+
+      /* 获取第一个 Largest InternalKey > Begin Compaction InternalKey 的文件 */
       if (compact_pointer_[level].empty() ||
           icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
         c->inputs_[0].push_back(f);
         break;
       }
     }
+
+    /* 遍历完所有文件都没有找到合适的 SSTable 时，就默认使用第一个文件进行 Compact */
     if (c->inputs_[0].empty()) {
       // Wrap-around to the beginning of the key space
       c->inputs_[0].push_back(current_->files_[level][0]);

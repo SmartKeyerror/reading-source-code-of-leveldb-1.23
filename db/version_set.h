@@ -306,25 +306,34 @@ class VersionSet {
 
   void AppendVersion(Version* v);
 
+  /* part 1: 由构造函数直接确定，属于 DB 运行时的基本信息 */
   Env* const env_;
   const std::string dbname_;
   const Options* const options_;
   TableCache* const table_cache_;
   const InternalKeyComparator icmp_;
+
+  /* part 2: Meta Data，包括 SSTable Number、Log Number 以及上一个 SEQ 等信息 */
   uint64_t next_file_number_;
   uint64_t manifest_file_number_;
   uint64_t last_sequence_;
   uint64_t log_number_;
   uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
 
-  // Opened lazily
+  /* part 3: Opened lazily, manifest 相关 */
   WritableFile* descriptor_file_;
   log::Writer* descriptor_log_;
+
+  /* part 4: Double Linked List */
   Version dummy_versions_;  // Head of circular doubly-linked list of versions.
   Version* current_;        // == dummy_versions_.prev_
 
-  // Per-level key at which the next compaction at that level should start.
-  // Either an empty string, or a valid InternalKey.
+  /* part 5: Compaction 相关
+   *
+   * Per-level key at which the next compaction at that level should start.
+   * Either an empty string, or a valid InternalKey.
+   *
+   * 记录每一个 level 下一次 Compaction 的起始 InternalKey，可以为空字符串 */
   std::string compact_pointer_[config::kNumLevels];
 };
 
@@ -375,14 +384,19 @@ class Compaction {
   friend class Version;
   friend class VersionSet;
 
+  /* 私有构造函数，但是由于 VersionSet 是友元类，所以可以在其成员方法中实例化 Compaction 对象 */
   Compaction(const Options* options, int level);
 
+  /* 此次 Compaction 的起始 level，或者说，inputs 所在 level */
   int level_;
   uint64_t max_output_file_size_;
   Version* input_version_;
   VersionEdit edit_;
 
   // Each compaction reads inputs from "level_" and "level_+1"
+  /* 核心字段
+   * inputs_[0] 表示 level K 将要进行 Compact 的 sst files (vector)
+   * inputs_[1] 表示 level K+1 将要进行 Compact 的 sst files (vector) */
   std::vector<FileMetaData*> inputs_[2];  // The two sets of inputs
 
   // State used to check for number of overlapping grandparent files
