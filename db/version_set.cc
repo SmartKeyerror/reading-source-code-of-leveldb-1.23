@@ -612,7 +612,8 @@ class VersionSet::Builder {
     }
   };
 
-  /* 这里使用了 rbtree 所实现的 set，并且自定了比较函数 */
+  /* 这里使用了 rbtree 所实现的 set，并且自定义了比较函数，FileSet.begin() 就是整个文件集合中
+   * smallest 最小的那个 FileMetaData */
   typedef std::set<FileMetaData*, BySmallestKey> FileSet;
 
   struct LevelState {
@@ -634,6 +635,8 @@ class VersionSet::Builder {
     base_->Ref();
     BySmallestKey cmp;
     cmp.internal_comparator = &vset_->icmp_;
+
+    /* 为每一层 level 初始化 FileSet */
     for (int level = 0; level < config::kNumLevels; level++) {
       levels_[level].added_files = new FileSet(cmp);
     }
@@ -662,7 +665,10 @@ class VersionSet::Builder {
 
   // Apply all of the edits in *edit to the current state.
   void Apply(VersionEdit* edit) {
-    /* Update compaction pointers，更新 compact_pointers_ 中的内容 */
+
+    /* Update compaction pointers，更新 compact_pointers_ 中的内容，
+     * compact_pointer_ 中的内容将直接决定 Compaction 时到底选取哪些 SSTable，
+     * 下面一段代码做的事情只是简单地把 VersionEdit::compact_pointers_ 中的内容转换成 VersionSet::compact_pointer_ 而已 */
     for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
       const int level = edit->compact_pointers_[i].first;
       vset_->compact_pointer_[level] =
@@ -695,6 +701,7 @@ class VersionSet::Builder {
       // same as the compaction of 40KB of data.  We are a little
       // conservative and allow approximately one seek for every 16KB
       // of data before triggering a compaction.
+      // 计算 allowed_seeks
       f->allowed_seeks = static_cast<int>((f->file_size / 16384U));
       if (f->allowed_seeks < 100) f->allowed_seeks = 100;
 
@@ -1432,6 +1439,7 @@ void AddBoundaryInputs(const InternalKeyComparator& icmp,
   }
 }
 
+/* 扩展 inputs_[0] 的范围 */
 void VersionSet::SetupOtherInputs(Compaction* c) {
   const int level = c->level();
   InternalKey smallest, largest;
