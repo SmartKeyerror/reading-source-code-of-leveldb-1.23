@@ -56,6 +56,9 @@ class VersionEdit {
     has_last_sequence_ = true;
     last_sequence_ = seq;
   }
+
+  /* 设置 VersionEdit compact_pointers_，只会在 Compaction 的 SetupOtherInputs 以及
+   * WriteSnapshot 中被调用 */
   void SetCompactPointer(int level, const InternalKey& key) {
     compact_pointers_.push_back(std::make_pair(level, key));
   }
@@ -102,7 +105,9 @@ class VersionEdit {
   bool has_next_file_number_;
   bool has_last_sequence_;
 
+  /* 记录某一层下一次进行 Compaction 的起始 InternalKey */
   std::vector<std::pair<int, InternalKey>> compact_pointers_;
+
   DeletedFileSet deleted_files_;  /* 记录哪些文件被删除了 */
 
   /* 记录哪一层新增了哪些 .ldb 文件，并且使用 FileMetaData 来表示 */

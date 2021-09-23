@@ -84,6 +84,7 @@ Version::~Version() {
   }
 }
 
+/* 二分查找，在 files 中找到第一个 largest_key >= key 的索引号  */
 int FindFile(const InternalKeyComparator& icmp,
              const std::vector<FileMetaData*>& files, const Slice& key) {
   uint32_t left = 0;
@@ -582,9 +583,18 @@ std::string Version::DebugString() const {
   return r;
 }
 
-// A helper class so we can efficiently apply a whole sequence
-// of edits to a particular state without creating intermediate
-// Versions that contain full copies of the intermediate state.
+/*
+ * A helper class so we can efficiently apply a whole sequence
+ * of edits to a particular state without creating intermediate
+ * Versions that contain full copies of the intermediate state.
+ *
+ * Builder 的作用有点儿类似于"压缩机"。假如说我们现在有一个最初的 Version 和多个 VersionEdit，
+ * 那么如果我们想要得到最新的 Version 的话，就需要把所有的 VersionEdit 逐一应用在 Version 中。
+ * Builder 就是干这件事情的，并且不会产生大量的中间 Version。
+ *
+ * Builder 更像是一个工具类，所以我个人认为它不应该放在 VersionSet 这个类中，但是不放在 VersionSet
+ * 中的话很多方式实现起来就很麻烦，也算是一个设计上的妥协。
+ * */
 class VersionSet::Builder {
  private:
   // Helper to sort by v->files_[file_number].smallest
@@ -602,18 +612,24 @@ class VersionSet::Builder {
     }
   };
 
+  /* 这里使用了 rbtree 所实现的 set，并且自定了比较函数 */
   typedef std::set<FileMetaData*, BySmallestKey> FileSet;
+
   struct LevelState {
     std::set<uint64_t> deleted_files;
     FileSet* added_files;
   };
 
+  /* vset_ 和 base_ 均由构造函数初始化 */
   VersionSet* vset_;
   Version* base_;
+
+  /* levels_ 中记录了每一个 level 中的文件新增、删除情况 */
   LevelState levels_[config::kNumLevels];
 
  public:
-  // Initialize a builder with the files from *base and other info from *vset
+  /* Initialize a builder with the files from *base and other info from *vset
+   * 构造函数接收一个 VersionSet 和 Base Version */
   Builder(VersionSet* vset, Version* base) : vset_(vset), base_(base) {
     base_->Ref();
     BySmallestKey cmp;
@@ -646,7 +662,7 @@ class VersionSet::Builder {
 
   // Apply all of the edits in *edit to the current state.
   void Apply(VersionEdit* edit) {
-    // Update compaction pointers
+    /* Update compaction pointers，更新 compact_pointers_ 中的内容 */
     for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
       const int level = edit->compact_pointers_[i].first;
       vset_->compact_pointer_[level] =
@@ -1295,7 +1311,9 @@ Compaction* VersionSet::PickCompaction() {
       /* 取得每一个 SSTable 的  FileMetaData*/
       FileMetaData* f = current_->files_[level][i];
 
-      /* 获取第一个 Largest InternalKey > Begin Compaction InternalKey 的文件 */
+      /* 获取第一个 Largest InternalKey > Begin Compaction InternalKey 的文件。
+       * compact_pointer_ 到底是个啥玩意儿? 在何处写入的?
+       * */
       if (compact_pointer_[level].empty() ||
           icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
         c->inputs_[0].push_back(f);

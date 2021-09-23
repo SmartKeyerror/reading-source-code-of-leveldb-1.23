@@ -537,6 +537,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
       /* 2. 决定将 New SSTable 推送到哪一层 */
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
+    /* 新增了一个 SSTable，因此需要更新 VersionSet::new_files_ 字段 */
     edit->AddFile(level, meta.number, meta.file_size, meta.smallest,
                   meta.largest);
   }
@@ -560,6 +561,7 @@ void DBImpl::CompactMemTable() {
   VersionEdit edit;
   Version* base = versions_->current();
   base->Ref();
+  /* 生成新的 SSTable，并将其推送至某一个 level */
   Status s = WriteLevel0Table(imm_, &edit, base);
   base->Unref();
 
@@ -569,8 +571,10 @@ void DBImpl::CompactMemTable() {
 
   // Replace immutable memtable with the generated Table
   if (s.ok()) {
+    /* 记录 VersionEdit */
     edit.SetPrevLogNumber(0);
     edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+    /* 将最新的 VersionEdit 应用于 VersionSet 中 */
     s = versions_->LogAndApply(&edit, &mutex_);
   }
 
