@@ -1318,9 +1318,7 @@ Compaction* VersionSet::PickCompaction() {
       /* 取得每一个 SSTable 的  FileMetaData*/
       FileMetaData* f = current_->files_[level][i];
 
-      /* 获取第一个 Largest InternalKey > Begin Compaction InternalKey 的文件。
-       * compact_pointer_ 到底是个啥玩意儿? 在何处写入的?
-       * */
+      /* 获取第一个 Largest InternalKey > compact_pointer_[level] 的文件 */
       if (compact_pointer_[level].empty() ||
           icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
         c->inputs_[0].push_back(f);
@@ -1344,8 +1342,11 @@ Compaction* VersionSet::PickCompaction() {
   c->input_version_ = current_;
   c->input_version_->Ref();
 
-  // Files in level 0 may overlap each other, so pick up all overlapping ones
+  /* Files in level 0 may overlap each other, so pick up all overlapping ones
+   * 注意，我们需要对 level 0 进行特殊处理，因为 level 0 之间的 SSTable 可能会出现 key 的重叠，
+   * 而 inputs_[0] 中的文件应和本层其它文件之间没有任何的 Key 重叠。*/
   if (level == 0) {
+    /* 取得 inputs_[0] 中所有 file 的最小 InternalKey 和最大 InternalKey */
     InternalKey smallest, largest;
     GetRange(c->inputs_[0], &smallest, &largest);
     // Note that the next call will discard the file we placed in
@@ -1360,8 +1361,8 @@ Compaction* VersionSet::PickCompaction() {
   return c;
 }
 
-// Finds the largest key in a vector of files. Returns true if files it not
-// empty.
+/* Finds the largest key in a vector of files. Returns true if files it not empty.
+ * 获取某一个 level 中最大的 InternalKey */
 bool FindLargestKey(const InternalKeyComparator& icmp,
                     const std::vector<FileMetaData*>& files,
                     InternalKey* largest_key) {
@@ -1388,6 +1389,8 @@ FileMetaData* FindSmallestBoundaryFile(
   FileMetaData* smallest_boundary_file = nullptr;
   for (size_t i = 0; i < level_files.size(); ++i) {
     FileMetaData* f = level_files[i];
+    /* 最小 InternalKey 大于 largest key，并且最小 InternalKey 的 User Key 等于 largest key
+     * 的 User Key */
     if (icmp.Compare(f->smallest, largest_key) > 0 &&
         user_cmp->Compare(f->smallest.user_key(), largest_key.user_key()) ==
             0) {
@@ -1439,7 +1442,7 @@ void AddBoundaryInputs(const InternalKeyComparator& icmp,
   }
 }
 
-/* 扩展 inputs_[0] 的范围 */
+/* 本质上是确定 inputs_[1] */
 void VersionSet::SetupOtherInputs(Compaction* c) {
   const int level = c->level();
   InternalKey smallest, largest;
